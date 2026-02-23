@@ -21,6 +21,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hashicorp/terraform-provider-azurerm/internal/sdk"
 	"github.com/hashicorp/terraform-provider-azurerm/internal/services/containerapps/helpers"
+	"github.com/hashicorp/terraform-provider-azurerm/internal/services/containerapps/migration"
 	"github.com/hashicorp/terraform-provider-azurerm/internal/services/containerapps/validate"
 	"github.com/hashicorp/terraform-provider-azurerm/internal/tf/pluginsdk"
 	"github.com/hashicorp/terraform-provider-azurerm/internal/tf/validation"
@@ -50,6 +51,16 @@ type ContainerAppJobModel struct {
 }
 
 var _ sdk.ResourceWithUpdate = ContainerAppJobResource{}
+var _ sdk.ResourceWithStateMigration = ContainerAppJobResource{}
+
+func (r ContainerAppJobResource) StateUpgraders() sdk.StateUpgradeData {
+	return sdk.StateUpgradeData{
+		SchemaVersion: 1,
+		Upgraders: map[int]pluginsdk.StateUpgrade{
+			0: migration.ContainerAppJobV0ToV1{},
+		},
+	}
+}
 
 func (r ContainerAppJobResource) ModelObject() interface{} {
 	return &ContainerAppJobModel{}

@@ -1848,9 +1848,9 @@ type ContainerEnvVar struct {
 
 func ContainerEnvVarSchema() *pluginsdk.Schema {
 	return &pluginsdk.Schema{
-		Type:     pluginsdk.TypeList,
-		MinItems: 1,
+		Type:     pluginsdk.TypeSet,
 		Optional: true,
+		Set:      containerEnvVarHash,
 		Elem: &pluginsdk.Resource{
 			Schema: map[string]*pluginsdk.Schema{
 				"name": {
@@ -1876,10 +1876,21 @@ func ContainerEnvVarSchema() *pluginsdk.Schema {
 	}
 }
 
+// containerEnvVarHash hashes env var blocks by name only, so that changes to
+// value or secret_name are detected as in-place updates rather than
+// remove-and-add. This also makes the set order-independent, fixing the
+// cascading diff issue when env vars are added or removed in the middle of
+// the list (see https://github.com/hashicorp/terraform-provider-azurerm/issues/29743).
+func containerEnvVarHash(v interface{}) int {
+	m := v.(map[string]interface{})
+	return pluginsdk.HashString(m["name"].(string))
+}
+
 func ContainerEnvVarSchemaComputed() *pluginsdk.Schema {
 	return &pluginsdk.Schema{
-		Type:     pluginsdk.TypeList,
+		Type:     pluginsdk.TypeSet,
 		Computed: true,
+		Set:      containerEnvVarHash,
 		Elem: &pluginsdk.Resource{
 			Schema: map[string]*pluginsdk.Schema{
 				"name": {

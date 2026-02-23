@@ -19,6 +19,7 @@ import (
 	"github.com/hashicorp/go-azure-sdk/resource-manager/containerapps/2025-07-01/managedenvironments"
 	"github.com/hashicorp/terraform-provider-azurerm/internal/sdk"
 	"github.com/hashicorp/terraform-provider-azurerm/internal/services/containerapps/helpers"
+	"github.com/hashicorp/terraform-provider-azurerm/internal/services/containerapps/migration"
 	"github.com/hashicorp/terraform-provider-azurerm/internal/services/containerapps/validate"
 	"github.com/hashicorp/terraform-provider-azurerm/internal/tf/pluginsdk"
 	"github.com/hashicorp/terraform-provider-azurerm/internal/tf/validation"
@@ -53,6 +54,16 @@ type ContainerAppModel struct {
 var _ sdk.ResourceWithUpdate = ContainerAppResource{}
 
 var _ sdk.ResourceWithCustomizeDiff = ContainerAppResource{}
+var _ sdk.ResourceWithStateMigration = ContainerAppResource{}
+
+func (r ContainerAppResource) StateUpgraders() sdk.StateUpgradeData {
+	return sdk.StateUpgradeData{
+		SchemaVersion: 1,
+		Upgraders: map[int]pluginsdk.StateUpgrade{
+			0: migration.ContainerAppV0ToV1{},
+		},
+	}
+}
 
 func (r ContainerAppResource) ModelObject() interface{} {
 	return &ContainerAppModel{}

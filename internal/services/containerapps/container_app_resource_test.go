@@ -20,6 +20,54 @@ import (
 
 type ContainerAppResource struct{}
 
+// TestAccContainerAppResource_envInsertionNoCascadingDiff verifies that
+// inserting an env var alphabetically before existing env vars does not
+// produce a cascading diff. Before the TypeList→TypeSet change for env
+// blocks (issue #29743), inserting env var "AAA" before "FOO" would shift
+// all subsequent env vars by index, causing noisy plans. With TypeSet,
+// only the single addition appears.
+func TestAccContainerAppResource_envInsertionNoCascadingDiff(t *testing.T) {
+	data := acceptance.BuildTestData(t, "azurerm_container_app", "test")
+	r := ContainerAppResource{}
+
+	data.ResourceTest(t, r, []acceptance.TestStep{
+		{
+			// Step 1: Create with two env vars (FOO, ZZZ)
+			Config: r.envVarsTwoVars(data),
+			Check: acceptance.ComposeTestCheckFunc(
+				check.That(data.ResourceName).ExistsInAzure(r),
+				check.That(data.ResourceName).Key("template.0.container.0.env.#").HasValue("2"),
+			),
+		},
+		data.ImportStep(),
+		{
+			// Step 2: Insert env var AAA before FOO (3 env vars now: AAA, FOO, ZZZ)
+			// With TypeList this would cascade: FOO→AAA, ZZZ→FOO, (new)→ZZZ
+			// With TypeSet this is a single addition of AAA
+			Config: r.envVarsThreeVarsInserted(data),
+			Check: acceptance.ComposeTestCheckFunc(
+				check.That(data.ResourceName).ExistsInAzure(r),
+				check.That(data.ResourceName).Key("template.0.container.0.env.#").HasValue("3"),
+			),
+		},
+		data.ImportStep(),
+		{
+			// Step 3: Re-apply same config — plan must be empty (no drift)
+			Config:   r.envVarsThreeVarsInserted(data),
+			PlanOnly: true,
+		},
+		{
+			// Step 4: Remove the middle env var (back to AAA, ZZZ)
+			Config: r.envVarsTwoVarsAfterRemoval(data),
+			Check: acceptance.ComposeTestCheckFunc(
+				check.That(data.ResourceName).ExistsInAzure(r),
+				check.That(data.ResourceName).Key("template.0.container.0.env.#").HasValue("2"),
+			),
+		},
+		data.ImportStep(),
+	})
+}
+
 func TestAccContainerAppResource_basic(t *testing.T) {
 	data := acceptance.BuildTestData(t, "azurerm_container_app", "test")
 	r := ContainerAppResource{}
@@ -2969,6 +3017,107 @@ resource "azurerm_container_app" "test" {
       image  = "jackofallops/azure-containerapps-python-acctest:v0.0.1"
       cpu    = 0.25
       memory = "0.5Gi"
+    }
+  }
+}
+`, r.template(data), data.RandomInteger)
+}
+
+func (r ContainerAppResource) envVarsTwoVars(data acceptance.TestData) string {
+	return fmt.Sprintf(`
+%s
+
+resource "azurerm_container_app" "test" {
+  name                         = "acctest-capp-%[2]d"
+  container_app_environment_id = azurerm_container_app_environment.test.id
+  resource_group_name          = azurerm_resource_group.test.name
+  revision_mode                = "Single"
+
+  template {
+    container {
+      name   = "acctest-cont-%[2]d"
+      image  = "jackofallops/azure-containerapps-python-acctest:v0.0.1"
+      cpu    = 0.25
+      memory = "0.5Gi"
+
+      env {
+        name  = "FOO"
+        value = "foo-value"
+      }
+
+      env {
+        name  = "ZZZ"
+        value = "zzz-value"
+      }
+    }
+  }
+}
+`, r.template(data), data.RandomInteger)
+}
+
+func (r ContainerAppResource) envVarsThreeVarsInserted(data acceptance.TestData) string {
+	return fmt.Sprintf(`
+%s
+
+resource "azurerm_container_app" "test" {
+  name                         = "acctest-capp-%[2]d"
+  container_app_environment_id = azurerm_container_app_environment.test.id
+  resource_group_name          = azurerm_resource_group.test.name
+  revision_mode                = "Single"
+
+  template {
+    container {
+      name   = "acctest-cont-%[2]d"
+      image  = "jackofallops/azure-containerapps-python-acctest:v0.0.1"
+      cpu    = 0.25
+      memory = "0.5Gi"
+
+      env {
+        name  = "AAA"
+        value = "aaa-value"
+      }
+
+      env {
+        name  = "FOO"
+        value = "foo-value"
+      }
+
+      env {
+        name  = "ZZZ"
+        value = "zzz-value"
+      }
+    }
+  }
+}
+`, r.template(data), data.RandomInteger)
+}
+
+func (r ContainerAppResource) envVarsTwoVarsAfterRemoval(data acceptance.TestData) string {
+	return fmt.Sprintf(`
+%s
+
+resource "azurerm_container_app" "test" {
+  name                         = "acctest-capp-%[2]d"
+  container_app_environment_id = azurerm_container_app_environment.test.id
+  resource_group_name          = azurerm_resource_group.test.name
+  revision_mode                = "Single"
+
+  template {
+    container {
+      name   = "acctest-cont-%[2]d"
+      image  = "jackofallops/azure-containerapps-python-acctest:v0.0.1"
+      cpu    = 0.25
+      memory = "0.5Gi"
+
+      env {
+        name  = "AAA"
+        value = "aaa-value"
+      }
+
+      env {
+        name  = "ZZZ"
+        value = "zzz-value"
+      }
     }
   }
 }
