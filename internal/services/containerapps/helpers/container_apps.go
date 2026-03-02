@@ -1863,12 +1863,14 @@ func ContainerEnvVarSchema() *pluginsdk.Schema {
 				"value": {
 					Type:        pluginsdk.TypeString,
 					Optional:    true,
+					Default:     "",
 					Description: "The value for this environment variable. **NOTE:** This value is ignored if `secret_name` is used",
 				},
 
 				"secret_name": {
 					Type:        pluginsdk.TypeString,
 					Optional:    true,
+					Default:     "",
 					Description: "The name of the secret that contains the value for this environment variable.",
 				},
 			},
