@@ -2873,6 +2873,7 @@ func SecretsSchema() *pluginsdk.Schema {
 				"identity": {
 					Type:     pluginsdk.TypeString,
 					Optional: true,
+					Default:  "",
 					ValidateFunc: validation.Any(
 						commonids.ValidateUserAssignedIdentityID,
 						validation.StringInSlice([]string{"System"}, false),
@@ -2883,6 +2884,7 @@ func SecretsSchema() *pluginsdk.Schema {
 				"key_vault_secret_id": {
 					Type:         pluginsdk.TypeString,
 					Optional:     true,
+					Default:      "",
 					ValidateFunc: keyVaultValidate.NestedItemIdWithOptionalVersion,
 					Description:  "The Key Vault Secret ID. Could be either one of `id` or `versionless_id`.",
 				},
@@ -2897,6 +2899,7 @@ func SecretsSchema() *pluginsdk.Schema {
 				"value": {
 					Type:        pluginsdk.TypeString,
 					Optional:    true,
+					Default:     "",
 					Sensitive:   true,
 					Description: "The value for this secret.",
 				},
